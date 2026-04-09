@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String   @id @default(uuid())
+  clerkId              String   @unique
+  email                String   @unique
+  name                 String?
+  plan                 String   @default("free")
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  messagesThisMonth    Int      @default(0)
+  monthResetAt         DateTime @default(now())
+  createdAt            DateTime @default(now())
+
+  bots Bot[]
+}
+
+model Bot {
+  id             String   @id @default(uuid())
+  userId         String
+  name           String
+  description    String?
+  primaryColor   String   @default("#6c8aff")
+  logoUrl        String?
+  welcomeMessage String   @default("Hi! How can I help you today?")
+  placeholder    String   @default("Ask me anything...")
+  systemPrompt   String   @db.Text @default("You are a helpful support assistant. Answer questions using only the provided context. If you don't know the answer, say so honestly. Be concise and friendly.")
+  status         String   @default("untrained")
+  trainingError  String?
+  messageCount   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources       Source[]
+  conversations Conversation[]
+
+  @@index([userId])
+}
+
+model Source {
+  id         String   @id @default(uuid())
+  botId      String
+  type       String   // "pdf" | "url" | "text"
+  name       String
+  content    String?  @db.Text
+  fileUrl    String?
+  status     String   @default("pending")
+  chunkCount Int      @default(0)
+  errorMsg   String?
+  createdAt  DateTime @default(now())
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@index([botId])
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  botId     String
+  sessionId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bot      Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([botId])
+  @@index([sessionId])
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String   // "user" | "assistant"
+  content        String   @db.Text
+  sourceChunks   Json?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
