@@ -14,8 +14,8 @@ const PLAN_LIMITS = {
 };
 
 export const handleChat = async (req: Request, res: Response) => {
-  const { botId } = req.params;
-  const { message, sessionId, history = [] } = req.body;
+  const { botId } = req.params as { botId: string };
+  const { message, sessionId, history = [] } = req.body as { message: string, sessionId: string, history: any[] };
 
   if (!message || !sessionId) {
     return res.status(400).json({ error: 'Message and sessionId are required' });
@@ -27,7 +27,7 @@ export const handleChat = async (req: Request, res: Response) => {
       include: {
         user: true,
       },
-    });
+    }) as any;
 
     if (!bot) {
       return res.status(404).json({ error: 'Bot not found' });
@@ -48,16 +48,16 @@ export const handleChat = async (req: Request, res: Response) => {
 
     let conversation = await prisma.conversation.findFirst({
       where: {
-        botId,
-        sessionId,
+        botId: botId as string,
+        sessionId: sessionId as string,
       },
     });
 
     if (!conversation) {
       conversation = await prisma.conversation.create({
         data: {
-          botId,
-          sessionId,
+          botId: botId as string,
+          sessionId: sessionId as string,
         },
       });
     }
@@ -101,17 +101,17 @@ export const handleChat = async (req: Request, res: Response) => {
         role: 'assistant',
         content: fullAssistantResponse,
       },
-    }).catch(err => console.error('Error saving assistant message:', err));
+    }).catch((err: any) => console.error('Error saving assistant message:', err));
 
     prisma.bot.update({
-      where: { id: botId },
+      where: { id: botId as string },
       data: { messageCount: { increment: 1 } },
-    }).catch(err => console.error('Error updating bot message count:', err));
+    }).catch((err: any) => console.error('Error updating bot message count:', err));
 
     prisma.user.update({
       where: { id: user.id },
       data: { messagesThisMonth: { increment: 1 } },
-    }).catch(err => console.error('Error updating user message count:', err));
+    }).catch((err: any) => console.error('Error updating user message count:', err));
 
   } catch (error: any) {
     console.error('Chat error:', error);

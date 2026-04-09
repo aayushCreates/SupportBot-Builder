@@ -108,7 +108,7 @@ export const createBot = async (req: AuthRequest, res: Response) => {
 
 export const getBot = async (req: AuthRequest, res: Response) => {
   try {
-    const { botId } = req.params;
+    const { botId } = req.params as { botId: string };
     const userId = req.userId!;
 
     const bot = await prisma.bot.findUnique({
@@ -142,7 +142,7 @@ export const getBot = async (req: AuthRequest, res: Response) => {
 
 export const updateBot = async (req: AuthRequest, res: Response) => {
   try {
-    const { botId } = req.params;
+    const { botId } = req.params as { botId: string };
     const userId = req.userId!;
     const validatedData = updateBotSchema.parse(req.body);
 
@@ -180,7 +180,7 @@ export const updateBot = async (req: AuthRequest, res: Response) => {
 
 export const deleteBot = async (req: AuthRequest, res: Response) => {
   try {
-    const { botId } = req.params;
+    const { botId } = req.params as { botId: string };
     const userId = req.userId!;
 
     const bot = await prisma.bot.findUnique({

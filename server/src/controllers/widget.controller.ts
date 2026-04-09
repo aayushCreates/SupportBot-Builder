@@ -3,7 +3,7 @@ import prisma from '../config/db';
 
 
 export const getWidgetConfig = async (req: Request, res: Response) => {
-  const { botId } = req.params;
+  const { botId } = req.params as { botId: string };
 
   try {
     const bot = await prisma.bot.findUnique({

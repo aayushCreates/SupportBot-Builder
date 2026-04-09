@@ -16,7 +16,7 @@ const createSourceSchema = z.object({
 
 export const listSources = async (req: AuthRequest, res: Response) => {
   try {
-    const { botId } = req.params;
+    const { botId } = req.params as { botId: string };
     
     const sources = await prisma.source.findMany({
       where: { botId },
@@ -32,7 +32,7 @@ export const listSources = async (req: AuthRequest, res: Response) => {
 
 export const addSource = async (req: AuthRequest, res: Response) => {
   try {
-    const { botId } = req.params;
+    const { botId } = req.params as { botId: string };
     const body = createSourceSchema.parse(req.body);
     const userPlan = req.userPlan!;
 
@@ -83,7 +83,7 @@ export const addSource = async (req: AuthRequest, res: Response) => {
       });
 
       // mark bot as untrained
-      await prisma.bot.update({ where: { id: botId }, data: { status: 'untrained' } });
+      await prisma.bot.update({ where: { id: botId as string }, data: { status: 'untrained' } });
 
       return res.status(201).json(source);
     }
@@ -106,7 +106,7 @@ export const addSource = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      await prisma.bot.update({ where: { id: botId }, data: { status: 'untrained' } });
+      await prisma.bot.update({ where: { id: botId as string }, data: { status: 'untrained' } });
       return res.status(201).json(source);
     }
 
@@ -128,7 +128,7 @@ export const addSource = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      await prisma.bot.update({ where: { id: botId }, data: { status: 'untrained' } });
+      await prisma.bot.update({ where: { id: botId as string }, data: { status: 'untrained' } });
       return res.status(201).json(source);
     }
 
@@ -144,7 +144,7 @@ export const addSource = async (req: AuthRequest, res: Response) => {
 
 export const deleteSource = async (req: AuthRequest, res: Response) => {
   try {
-    const { botId, sourceId } = req.params;
+    const { botId, sourceId } = req.params as { botId: string, sourceId: string };
 
     const source = await prisma.source.findUnique({
       where: { id: sourceId },
@@ -162,7 +162,7 @@ export const deleteSource = async (req: AuthRequest, res: Response) => {
     // Check if any sources left
     const remainingCount = await prisma.source.count({ where: { botId } });
     if (remainingCount === 0) {
-      await prisma.bot.update({ where: { id: botId }, data: { status: 'untrained' } });
+      await prisma.bot.update({ where: { id: botId as string }, data: { status: 'untrained' } });
     }
 
     res.status(204).send();
