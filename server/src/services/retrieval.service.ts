@@ -1,9 +1,7 @@
 import { embedTexts } from './embedding.service';
 import { queryChunks } from '../config/pinecone';
 
-/**
- * Retrieves relevant context chunks from Pinecone.
- */
+
 export const retrieveContext = async (botId: string, question: string): Promise<string> => {
   try {
     const embeddings = await embedTexts([question]);  // get Embeddings of the question
