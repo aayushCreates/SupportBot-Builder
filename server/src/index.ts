@@ -28,11 +28,15 @@ app.post('/webhooks/clerk', clerkWebhookHandler);
 // Bot & Source Routes
 import botRoutes from './routes/bot.routes';
 import sourceRoutes from './routes/source.routes';
+import chatRoutes from './routes/chat.routes';
+import widgetRoutes from './routes/widget.routes';
 
 app.use('/api/bots', ClerkExpressWithAuth() as any, botRoutes);
 app.use('/api/bots/:botId/sources', ClerkExpressWithAuth() as any, sourceRoutes);
 
-// Global error handler
+app.use('/api/chat', chatRoutes);
+app.use('/api/widget', widgetRoutes);
+
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
