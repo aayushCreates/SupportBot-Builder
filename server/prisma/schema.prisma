@@ -34,6 +34,8 @@ model Bot {
   systemPrompt   String   @db.Text @default("You are a helpful support assistant. Answer questions using only the provided context. If you don't know the answer, say so honestly. Be concise and friendly.")
   status         String   @default("untrained")
   trainingError  String?
+  aiProvider     String   @default("openai") // "openai" | "gemini"
+  embeddingDim   Int      @default(1536)
   messageCount   Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
