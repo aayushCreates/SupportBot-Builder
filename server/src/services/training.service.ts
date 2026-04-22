@@ -21,8 +21,11 @@ export const trainBot = async (botId: string): Promise<void> => {
       throw new Error("No ready sources found to train on.");
     }
 
-    // Ensure Pinecone index exists
-    await getOrCreateIndex(botId);
+    // Ensure Pinecone index exists with correct dimension
+    const bot = await prisma.bot.findUnique({ where: { id: botId } });
+    if (!bot) throw new Error("Bot not found");
+    
+    await getOrCreateIndex(botId, bot.embeddingDim);
 
     // Ingest each source
     let totalChunks = 0;

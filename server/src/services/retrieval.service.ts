@@ -1,10 +1,14 @@
 import { embedTexts } from './embedding.service';
 import { queryChunks } from '../config/pinecone';
+import prisma from '../config/db';
 
 
 export const retrieveContext = async (botId: string, question: string): Promise<string> => {
   try {
-    const embeddings = await embedTexts([question]);  // get Embeddings of the question
+    const bot = await prisma.bot.findUnique({ where: { id: botId } });
+    const provider = bot?.aiProvider || 'openai';
+
+    const { embeddings } = await embedTexts([question], provider);
     const queryVector = embeddings[0];
 
     const matches = await queryChunks(botId, queryVector, 5);

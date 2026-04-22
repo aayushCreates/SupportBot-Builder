@@ -1,23 +1,30 @@
-const pdfParse = require('pdf-parse');
 import fetch from 'node-fetch';
+import { PDFParse } from 'pdf-parse';
 
-/**
- * Extracts text from a PDF given its URL.
- * @param fileUrl URL of the PDF (e.g., from Cloudinary)
- * @returns Cleaned text content
- */
-export const parsePdf = async (fileUrl: string): Promise<string> => {
+export const parsePdf = async (source: string | Buffer): Promise<string> => {
   try {
-    const response = await fetch(fileUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+    let buffer: Buffer;
+
+    if (Buffer.isBuffer(source)) {
+      buffer = source;
+    } else {
+      // Fetch from URL
+      const response = await fetch(source);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
     }
 
-    const buffer = await response.buffer();
-    const data = await pdfParse(buffer);
+    // Parse PDF
+    const data = new PDFParse({
+      data: buffer
+    });
 
-    // Clean text: remove excessive whitespace, null characters, etc.
-    let text = data.text
+    const result = await data.getText();
+
+    let text = result.text
       .replace(/\0/g, '') // Remove null characters
       .replace(/\r\n/g, '\n')
       .replace(/[ \t]+/g, ' ') // Collapse horizontal whitespace
