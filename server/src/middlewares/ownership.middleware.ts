@@ -3,7 +3,7 @@ import { AuthRequest } from '../types';
 import prisma from '../config/db';
 
 export const checkBotOwnership = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const { botId } = req.params;
+  const { botId } = req.params as { botId: string };
   const userId = req.userId;
 
   if (!botId) {
