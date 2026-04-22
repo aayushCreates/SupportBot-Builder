@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../config/db';
 import openai from '../config/openai';
+import genAI from '../config/gemini';
 import { retrieveContext, buildMessages } from '../services/retrieval.service';
 import { initializeSSE, sendSSEEvent } from '../services/stream.service';
 
@@ -27,7 +28,7 @@ export const handleChat = async (req: Request, res: Response) => {
       include: {
         user: true,
       },
-    }) as any;
+    });
 
     if (!bot) {
       return res.status(404).json({ error: 'Bot not found' });
@@ -70,29 +71,69 @@ export const handleChat = async (req: Request, res: Response) => {
       },
     });
 
-    initializeSSE(res);   //  SSE is the easiest way to forward those chunks.
-
     const context = await retrieveContext(botId as string, message);
-
     const messages = buildMessages(bot.systemPrompt, context, history, message);
 
-    const stream = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: messages as any,
-      stream: true,
-    });
-
     let fullAssistantResponse = '';
+    initializeSSE(res);
 
-    for await (const chunk of stream) {
-      const text = chunk.choices[0]?.delta?.content || '';
-      if (text) {
-        fullAssistantResponse += text;
-        sendSSEEvent(res, { text });
+    try {
+      const stream = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: messages as any,
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const text = chunk.choices[0]?.delta?.content || '';
+        if (text) {
+          fullAssistantResponse += text;
+          sendSSEEvent(res, { text });
+        }
+      }
+    } catch (openaiError: any) {
+      const isQuotaError = openaiError.status === 429 || openaiError.message?.toLowerCase().includes('insufficient');
+      
+      if (isQuotaError) {
+        console.warn('OpenAI quota exceeded, falling back to Gemini for chat...');
+        const model = genAI.getGenerativeModel({ 
+          model: "gemini-2.5-flash",
+          systemInstruction: {
+            role: 'system',
+            parts: [{ text: `${bot.systemPrompt}\n\nCONTEXT:\n${context}` }]
+          }
+        });
+        
+        // Gemini requires history to start with 'user' and alternate roles
+        let geminiHistory = history
+          .map((h: any) => ({
+            role: h.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: h.content }]
+          }));
+
+        // Remove leading 'model' messages
+        while (geminiHistory.length > 0 && geminiHistory[0].role === 'model') {
+          geminiHistory.shift();
+        }
+        
+        const chat = model.startChat({
+          history: geminiHistory,
+        });
+
+        const result = await chat.sendMessageStream(message);
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          if (chunkText) {
+            fullAssistantResponse += chunkText;
+            sendSSEEvent(res, { text: chunkText });
+          }
+        }
+      } else {
+        throw openaiError;
       }
     }
 
-    sendSSEEvent(res, { done: true });  //  This tells the frontend that the stream has ended.
+    sendSSEEvent(res, { done: true });
     res.end();  
 
     prisma.message.create({
