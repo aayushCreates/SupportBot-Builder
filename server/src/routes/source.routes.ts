@@ -26,7 +26,6 @@ const upload = multer({
   },
 });
 
-// All routes require authentication and bot ownership
 router.use(requireAuth);
 router.use(checkBotOwnership);
 

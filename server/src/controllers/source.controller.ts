@@ -68,8 +68,8 @@ export const addSource = async (req: AuthRequest, res: Response) => {
       const uploadResult = await uploadPromise;
       const fileUrl = uploadResult.secure_url;
 
-      // Extract text
-      const extractedText = await parsePdf(fileUrl);
+      // Extract text directly from the buffer to avoid network errors
+      const extractedText = await parsePdf(file.buffer);
 
       const source = await prisma.source.create({
         data: {
