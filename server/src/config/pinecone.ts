@@ -50,7 +50,6 @@ export const getOrCreateIndex = async (
     },
   });
 
-  // Wait for the index to be ready
   let isReady = false;
   while (!isReady) {
     const description = await pinecone.describeIndex(indexName);
@@ -72,7 +71,7 @@ export const upsertChunks = async (botId: string, chunks: any[]) => {
   for (let i = 0; i < chunks.length; i += 100) {
     const batch = chunks.slice(i, i + 100);
     await index.upsert({
-      records: batch.map((c) => ({
+      records: batch.map((c: any) => ({
         id: c.id,
         values: c.embedding,
         metadata: {
@@ -99,7 +98,7 @@ export const queryChunks = async (
     includeMetadata: true,
   });
 
-  return result.matches.map((m) => ({
+  return result.matches.map((m: any) => ({
     text: m.metadata?.text as string,
     sourceId: m.metadata?.sourceId as string,
     sourceName: m.metadata?.sourceName as string,
@@ -115,7 +114,7 @@ export const deleteSourceChunks = async (botId: string, sourceId: string) => {
 
 export const deleteIndex = async (botId: string) => {
   const indexName = getIndexName(botId);
-  await pinecone.deleteIndex(indexName).catch((err) => {
+  await pinecone.deleteIndex(indexName).catch((err: any) => {
     console.warn(`Could not delete Pinecone index ${indexName}:`, err.message);
   });
 };
