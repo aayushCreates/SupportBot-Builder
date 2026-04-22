@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SignInButton, useAuth } from "@clerk/clerk-react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import {
   Menu,
   ArrowRight,
@@ -189,6 +189,58 @@ const LandingPage: React.FC = () => {
           </button>
         </div>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] md:hidden animate-in fade-in duration-300">
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-xl"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="absolute top-0 right-0 w-full p-6 space-y-8 animate-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 flex items-center justify-center bg-brand rounded-lg">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-lg font-bold">SupportBot</span>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 hover:bg-bg-tertiary rounded-xl transition-colors"
+              >
+                <Plus className="w-6 h-6 rotate-45" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-6">
+              {["Features", "Pricing", "Help"].map((item) => (
+                <a
+                  key={item}
+                  href={`#${item.toLowerCase()}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-lg font-semibold text-foreground hover:text-brand transition-colors"
+                >
+                  {item}
+                </a>
+              ))}
+            </div>
+
+            <div className="pt-8 border-t border-border flex flex-col gap-4">
+              <SignInButton mode="modal">
+                <Button variant="outline" className="w-full py-4 font-bold">
+                  Sign in
+                </Button>
+              </SignInButton>
+              <SignInButton mode="modal">
+                <Button className="w-full py-4 font-bold bg-primary text-white">
+                  Get started free
+                </Button>
+              </SignInButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main>
         {/* Hero Section */}
