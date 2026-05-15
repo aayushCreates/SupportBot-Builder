@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -31,7 +31,7 @@ model Bot {
   logoUrl        String?
   welcomeMessage String   @default("Hi! How can I help you today?")
   placeholder    String   @default("Ask me anything...")
-  systemPrompt   String   @db.Text @default("You are a helpful support assistant. Answer questions using only the provided context. If you don't know the answer, say so honestly. Be concise and friendly.")
+  systemPrompt   String   @default("You are a helpful support assistant. Answer questions using only the provided context. If you don't know the answer, say so honestly. Be concise and friendly.")
   status         String   @default("untrained")
   trainingError  String?
   aiProvider     String   @default("openai") // "openai" | "gemini"
@@ -52,7 +52,7 @@ model Source {
   botId      String
   type       String   // "pdf" | "url" | "text"
   name       String
-  content    String?  @db.Text
+  content    String?
   fileUrl    String?
   status     String   @default("pending")
   chunkCount Int      @default(0)
@@ -82,8 +82,8 @@ model Message {
   id             String   @id @default(uuid())
   conversationId String
   role           String   // "user" | "assistant"
-  content        String   @db.Text
-  sourceChunks   Json?
+  content        String
+  sourceChunks   String?
   createdAt      DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
