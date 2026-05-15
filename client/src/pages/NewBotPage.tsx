@@ -8,8 +8,13 @@ import {
   Trash2,
   Upload,
   ArrowRight,
+  Bot,
+  ChevronLeft,
+  X,
+  Send,
 } from "lucide-react";
 import { useBots } from "../hooks/useBots";
+import axiosInstance from "../api/axios";
 import { cn } from "../utils/helpers";
 import Button from "../components/ui/Button";
 import Input, { Textarea } from "../components/ui/Input";
@@ -35,7 +40,8 @@ const NewBotPage: React.FC = () => {
     name: "",
     description: "",
     welcomeMessage: "Hi! How can I help you today?",
-    primaryColor: "#5D7FF2", // Matching the blue in the screenshot
+    inputPlaceholder: "Ask me anything...",
+    primaryColor: "#6366F1", // Indigo default
   });
 
   const [sources, setSources] = useState<SourceDraft[]>([]);
@@ -46,13 +52,14 @@ const NewBotPage: React.FC = () => {
   const [textInput, setTextInput] = useState({ name: "", content: "" });
 
   const steps = [
-    { number: 1, label: "Basics" },
-    { number: 2, label: "Content" },
+    { number: 1, label: "Basic Info" },
+    { number: 2, label: "Add Content" },
     { number: 3, label: "Appearance" },
   ];
 
   const handleAddSource = (source: SourceDraft) => {
     setSources([...sources, source]);
+    toast.success(`${source.type.toUpperCase()} source added`);
   };
 
   const handleCreateBot = async () => {
@@ -63,11 +70,11 @@ const NewBotPage: React.FC = () => {
       const bot = await createBotMutation.mutateAsync({
         name: botData.name,
         description: botData.description,
+        welcomeMessage: botData.welcomeMessage,
+        primaryColor: botData.primaryColor,
       });
 
       // 2. Add Sources
-      const token = await (window as any).Clerk.session.getToken();
-
       for (const source of sources) {
         const formData = new FormData();
         formData.append("type", source.type);
@@ -81,18 +88,18 @@ const NewBotPage: React.FC = () => {
           formData.append("content", source.content);
         }
 
-        await fetch(`${import.meta.env.VITE_API_URL}/bots/${bot.id}/sources`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
+        await axiosInstance.post(`/bots/${bot.id}/sources`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
         });
       }
 
-      // 3. Start Training
-      await trainBotMutation.mutateAsync(bot.id);
+      // 3. Start Training (Optional but recommended at creation)
+      if (sources.length > 0) {
+        await trainBotMutation.mutateAsync(bot.id);
+      }
 
-      toast.success("Bot created and training started!");
-      navigate("/dashboard");
+      toast.success("Bot created successfully!");
+      navigate(`/bots/${bot.id}`);
     } catch (error: any) {
       toast.error(error.message || "Failed to create bot");
     } finally {
@@ -100,150 +107,154 @@ const NewBotPage: React.FC = () => {
     }
   };
 
-  const colorOptions = ["#5D7FF2", "#10B981", "#EF4444", "#D97706", "#0EA5E9"];
+  const colorOptions = ["#6366F1", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899"];
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 h-full flex flex-col items-center">
-      {/* Stepper */}
-      <div className="flex items-center gap-4 mb-16">
-        {steps.map((s, i) => (
-          <React.Fragment key={s.number}>
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                  step === s.number
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-brand/20"
-                    : step > s.number
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-bg-tertiary text-text-tertiary font-medium",
+    <div className="max-w-6xl mx-auto py-1 px-4 sm:px-6 lg:px-8">
+      {/* Content Container */}
+      <div className="bg-white border border-[#E4E4E7] rounded-[32px] p-8 sm:p-4 shadow-sm min-h-[600px] flex flex-col">
+        {/* Stepper Container */}
+        <div className="mb-6">
+          <div className="flex items-center justify-center max-w-2xl mx-auto">
+            {steps.map((s, i) => (
+              <React.Fragment key={s.number}>
+                <div className="flex flex-col items-center gap-2 relative z-10 w-24">
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-semibold transition-all duration-300",
+                      step === s.number
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                        : step > s.number
+                          ? "bg-blue-400 text-white"
+                          : "bg-[#F4F4F5] text-[#71717A]",
+                    )}
+                  >
+                    {step > s.number ? <Check className="w-5 h-5" /> : s.number}
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[12px] font-semibold tracking-tight whitespace-nowrap",
+                      step >= s.number ? "text-[#0A0A0A]" : "text-[#A1A1AA]",
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className="flex-1 h-[2px] bg-[#E4E4E7] -mt-6">
+                    <div
+                      className={cn(
+                        "h-full bg-blue-600 transition-all duration-500",
+                        step > s.number ? "w-full" : "w-0",
+                      )}
+                    />
+                  </div>
                 )}
-              >
-                {step > s.number ? <Check className="w-4 h-4" /> : s.number}
-              </div>
-              <span
-                className={cn(
-                  "text-sm font-bold tracking-tight",
-                  step >= s.number ? "text-foreground" : "text-text-tertiary",
-                )}
-              >
-                {s.label}
-              </span>
-            </div>
-            {i < steps.length - 1 && <div className="w-12 h-px bg-border" />}
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* Main Content Card Container */}
-      <div className="w-full max-w-2xl bg-card rounded-[32px] p-10 border border-border shadow-sm">
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
         {step === 1 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div>
-              <h2 className="text-3xl font-black text-foreground mb-2">
-                Name your bot
-              </h2>
-              <p className="text-text-secondary font-medium tracking-tight">
-                Give your bot a name your customers will see.
+          <div className="flex-1 flex flex-col max-w-xl mx-auto w-full pt-8">
+            <div className="mb-10 text-center sm:text-left">
+              <h1 className="text-[25px] font-semibold text-[#0A0A0A] mb-2">
+                Information about the bot
+              </h1>
+              <p className="text-[#71717A] text-[12px] font-medium">
+                This will help you identify it in your dashboard.
               </p>
             </div>
 
-            <div className="space-y-6">
-              <Input
-                label="Bot name *"
-                placeholder="testing"
-                value={botData.name}
-                onChange={(e) =>
-                  setBotData({ ...botData, name: e.target.value })
-                }
-                autoFocus
-              />
-              <Textarea
-                label="Description"
-                placeholder="testing"
-                value={botData.description}
-                onChange={(e) =>
-                  setBotData({ ...botData, description: e.target.value })
-                }
-                className="min-h-[140px]"
-              />
+            <div className="space-y-8 flex-1">
+              <div className="space-y-2">
+                <label className="text-[14px] font-semibold text-[#0A0A0A]">
+                  Bot Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Acme Support Assistant"
+                  value={botData.name}
+                  onChange={(e) =>
+                    setBotData({ ...botData, name: e.target.value })
+                  }
+                  className="w-full bg-white border border-[#E4E4E7] rounded-md px-4 py-2.5 text-[15px] focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all outline-none placeholder:text-[#A1A1AA]"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[14px] font-semibold text-[#0A0A0A]">
+                  Description (optional)
+                </label>
+                <textarea
+                  placeholder="Helps customers with product questions..."
+                  value={botData.description}
+                  onChange={(e) =>
+                    setBotData({ ...botData, description: e.target.value })
+                  }
+                  className="w-full bg-white border border-[#E4E4E7] rounded-md px-4 py-2.5 text-[15px] focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all outline-none placeholder:text-[#A1A1AA] min-h-[120px] resize-none"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center justify-end gap-6 pt-4">
+            <div className="flex items-center justify-between pt-12 border-t border-[#F4F4F5] mt-auto">
               <button
-                onClick={() => navigate("/dashboard")}
-                className="text-text-secondary font-bold hover:text-foreground transition-colors"
+                onClick={() => navigate("/bots")}
+                className="text-[#71717A] font-semibold text-[15px] hover:text-[#0A0A0A] transition-colors border px-4 py-2 rounded-md"
               >
                 Cancel
               </button>
-              <Button
+              <button
                 onClick={() => setStep(2)}
                 disabled={!botData.name.trim()}
-                className="rounded-xl px-10 py-3 shadow-xl shadow-brand/10"
+                className="bg-blue-500 hover:cursor-pointer disabled:opacity-50 text-white rounded-md px-6 py-2 font-semibold flex items-center gap-2 transition-all"
               >
-                Continue &rarr;
-              </Button>
+                Continue <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
 
         {step === 2 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
-            <div className="text-left">
-              <h2 className="text-3xl font-black text-foreground mb-2">
-                Add your knowledge base
-              </h2>
-              <p className="text-text-secondary font-medium tracking-tight">
-                Your bot will only answer from this content.
-              </p>
+          <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full pt-8">
+            <div className="flex justify-between">
+              <div className="mb-10">
+                <h1 className="text-[28px] font-semibold text-[#0A0A0A] mb-2">
+                  Add your knowledge base
+                </h1>
+                <p className="text-[#71717A] text-[12px] font-medium">
+                  Upload documents, paste URLs, or add text. You can add more
+                  later.
+                </p>
+              </div>
+
+              <div className="space-y-8">
+                {/* Tab Switcher */}
+                <div className="flex p-1.5 bg-[#F4F4F5] rounded-lg w-fit">
+                  {(["pdf", "url", "text"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveSourceTab(tab)}
+                      className={cn(
+                        "px-8 py-2.5 rounded-lg text-[13px] font-semibold transition-all",
+                        activeSourceTab === tab
+                          ? "bg-white text-[#0A0A0A] shadow-sm"
+                          : "text-[#71717A] hover:text-[#0A0A0A]",
+                      )}
+                    >
+                      {tab.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* Source Tabs */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setActiveSourceTab("pdf")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border",
-                  activeSourceTab === "pdf"
-                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-brand/20"
-                    : "bg-bg-secondary text-text-secondary border-border hover:bg-bg-tertiary",
-                )}
-              >
-                <FileText className="w-4 h-4" /> Upload PDF
-              </button>
-              <button
-                onClick={() => setActiveSourceTab("url")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border",
-                  activeSourceTab === "url"
-                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-brand/20"
-                    : "bg-bg-secondary text-text-secondary border-border hover:bg-bg-tertiary",
-                )}
-              >
-                <Globe className="w-4 h-4" /> Add URL
-              </button>
-              <button
-                onClick={() => setActiveSourceTab("text")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border",
-                  activeSourceTab === "text"
-                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-brand/20"
-                    : "bg-bg-secondary text-text-secondary border-border hover:bg-bg-tertiary",
-                )}
-              >
-                <Plus className="w-4 h-4" /> Paste Text
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="border-2 border-dashed border-border rounded-[32px] p-12 bg-background flex flex-col items-center justify-center gap-4 group hover:border-brand/40 transition-all min-h-[250px]">
-              {activeSourceTab === "pdf" && (
-                <>
-                  <div className="w-14 h-14 rounded-2xl bg-bg-secondary flex items-center justify-center text-text-tertiary group-hover:bg-brand-light group-hover:text-brand transition-all">
-                    <Upload className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <label className="cursor-pointer">
+            <div className="flex-1">
+              {/* Source Content Area */}
+              <div className="min-h-[300px]">
+                {activeSourceTab === "pdf" && (
+                  <div className="border-2 border-dashed border-[#E4E4E7] rounded-[32px] p-12 bg-[#FAFAF9] flex flex-col items-center justify-center group transition-all hover:bg-white hover:border-blue-600/30">
+                    <label className="cursor-pointer flex flex-col items-center gap-4 w-full">
                       <input
                         type="file"
                         accept=".pdf"
@@ -259,147 +270,205 @@ const NewBotPage: React.FC = () => {
                             });
                         }}
                       />
-                      <p className="text-lg font-black text-foreground">
-                        Drag & drop a PDF here
-                      </p>
-                      <p className="text-sm text-text-tertiary font-medium">
-                        or click to browse · Max 5MB · PDF only
-                      </p>
+                      <div className="w-16 h-16 rounded-2xl bg-white border border-[#E4E4E7] flex items-center justify-center text-[#A1A1AA] shadow-sm group-hover:scale-110 transition-all">
+                        <Upload className="w-8 h-8" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[18px] font-semibold text-[#0A0A0A]">
+                          Drag and drop PDF here
+                        </p>
+                        <p className="text-[12px] text-[#71717A] font-medium mt-1">
+                          or click to browse (max 5MB on Free plan)
+                        </p>
+                      </div>
                     </label>
                   </div>
-                  <button className="text-brand text-sm font-bold hover:underline">
-                    Add sample PDF
-                  </button>
-                </>
-              )}
+                )}
 
-              {activeSourceTab === "url" && (
-                <div className="w-full max-w-sm space-y-4">
-                  <Input
-                    placeholder="https://docs.acme.com"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                  />
-                  <Button
-                    variant="secondary"
-                    className="w-full py-3"
-                    onClick={() => {
-                      if (urlInput) {
-                        handleAddSource({
-                          id: Math.random().toString(),
-                          type: "url",
-                          name: urlInput,
-                          url: urlInput,
-                        });
-                        setUrlInput("");
-                      }
-                    }}
-                  >
-                    Add URL to Scrape
-                  </Button>
-                </div>
-              )}
+                {activeSourceTab === "url" && (
+                  <div className="w-full space-y-6 pt-4">
+                    <div className="space-y-2">
+                      <label className="text-[13px] font-semibold text-[#0A0A0A]">
+                        Website URL
+                      </label>
+                      <div className="relative mt-1">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A1A1AA]">
+                          <Globe className="w-5 h-5" />
+                        </div>
+                        <input
+                          type="url"
+                          placeholder="https://docs.yoursite.com/help"
+                          value={urlInput}
+                          onChange={(e) => setUrlInput(e.target.value)}
+                          className="w-full bg-white border border-[#E4E4E7] rounded-lg pl-12 pr-2 py-2 text-[15px] focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 outline-none transition-all placeholder:text-[#A1A1AA]"
+                        />
+                      </div>
+                      <p className="text-[11px] text-[#949494] font-medium">
+                        We'll extract the main content automatically.
+                      </p>
+                    </div>
 
-              {activeSourceTab === "text" && (
-                <div className="w-full max-w-md space-y-4">
-                  <Input
-                    placeholder="Document Title"
-                    value={textInput.name}
-                    onChange={(e) =>
-                      setTextInput({ ...textInput, name: e.target.value })
-                    }
-                  />
-                  <Textarea
-                    placeholder="Paste your content here..."
-                    value={textInput.content}
-                    onChange={(e) =>
-                      setTextInput({ ...textInput, content: e.target.value })
-                    }
-                  />
-                  <Button
-                    variant="secondary"
-                    className="w-full py-3"
-                    onClick={() => {
-                      if (textInput.name && textInput.content) {
-                        handleAddSource({
-                          id: Math.random().toString(),
-                          type: "text",
-                          ...textInput,
-                        });
-                        setTextInput({ name: "", content: "" });
-                      }
-                    }}
-                  >
-                    Add Document
-                  </Button>
+                    <button
+                      onClick={() => {
+                        if (urlInput) {
+                          handleAddSource({
+                            id: Math.random().toString(),
+                            type: "url",
+                            name: urlInput,
+                            url: urlInput,
+                          });
+                          setUrlInput("");
+                        }
+                      }}
+                      className="bg-blue-500 text-white px-6 py-2 rounded-md font-semibold hover:cursor-pointer transition-all text-[13px]"
+                    >
+                      Add URL
+                    </button>
+                  </div>
+                )}
+
+                {activeSourceTab === "text" && (
+                  <div className="w-full space-y-6 pt-4">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[14px] font-semibold text-[#0A0A0A]">
+                          Source Title
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Return Policy"
+                          value={textInput.name}
+                          onChange={(e) =>
+                            setTextInput({ ...textInput, name: e.target.value })
+                          }
+                          className="w-full bg-white border border-[#E4E4E7] rounded-md px-4 py-2 text-[15px] focus:ring-2 focus:ring-blue-600/10 outline-nonem mt-1"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[14px] font-semibold text-[#0A0A0A]">
+                          Content
+                        </label>
+                        <textarea
+                          placeholder="Paste your knowledge content here..."
+                          value={textInput.content}
+                          onChange={(e) =>
+                            setTextInput({
+                              ...textInput,
+                              content: e.target.value,
+                            })
+                          }
+                          className="w-full bg-white border border-[#E4E4E7] rounded-md px-4 py-2 text-[15px] focus:ring-2 focus:ring-blue-600/10 outline-none min-h-[100px] mt-1"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (textInput.name && textInput.content) {
+                          handleAddSource({
+                            id: Math.random().toString(),
+                            type: "text",
+                            ...textInput,
+                          });
+                          setTextInput({ name: "", content: "" });
+                        }
+                      }}
+                      className="bg-blue-500 text-white px-6 py-2 rounded-md font-semibold hover:cursor-pointer transition-all text-[14px]"
+                    >
+                      Add Text
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Added Sources Chips */}
+              {sources.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-4">
+                  {sources.map((s) => (
+                    <div
+                      key={s.id}
+                      className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-lg flex items-center gap-2 text-[12px] font-semibold text-blue-700"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      {s.name}
+                      <button
+                        onClick={() =>
+                          setSources(sources.filter((x) => x.id !== s.id))
+                        }
+                        className="hover:text-red-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Added Sources Chips */}
-            {sources.length > 0 && (
-              <div className="flex flex-wrap gap-2 text-left">
-                {sources.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-brand-light text-brand rounded-full text-xs font-black"
-                  >
-                    <span className="truncate max-w-[150px]">{s.name}</span>
-                    <button
-                      onClick={() =>
-                        setSources(sources.filter((src) => src.id !== s.id))
-                      }
-                    >
-                      <Trash2 className="w-3 h-3 hover:text-danger" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-6">
+            <div className="flex items-center justify-between pt-12 border-t border-[#F4F4F5] mt-auto">
               <button
                 onClick={() => setStep(1)}
-                className="text-text-secondary font-bold flex items-center gap-2 hover:text-foreground transition-all"
+                className="text-[#71717A] font-semibold text-[15px] flex items-center gap-2 hover:text-[#0A0A0A]"
               >
-                &larr; Back
+                <ChevronLeft className="w-4 h-4" /> Back
               </button>
-              <Button
-                onClick={() => setStep(3)}
-                className="rounded-xl px-10 py-3 shadow-xl shadow-brand/10"
-              >
-                Continue &rarr;
-              </Button>
+              <div className="flex items-center">
+                <button
+                  onClick={() => setStep(3)}
+                  className="bg-blue-500 hover:cursor-pointer disabled:opacity-50 text-white rounded-md px-6 py-2 font-semibold flex items-center gap-2 transition-all"
+                >
+                  Continue <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div>
-              <h2 className="text-3xl font-black text-foreground mb-2">
+          <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full pt-8">
+            <div className="mb-10">
+              <h1 className="text-[32px] font-semibold text-[#0A0A0A] mb-2">
                 Customize your bot
-              </h2>
-              <p className="text-text-secondary font-medium tracking-tight">
-                Make it feel like part of your product.
-              </p>
+              </h1>
             </div>
 
-            <div className="grid grid-cols-2 gap-10">
-              <div className="space-y-8">
-                <Input
-                  label="Welcome message"
-                  value={botData.welcomeMessage}
-                  onChange={(e) =>
-                    setBotData({ ...botData, welcomeMessage: e.target.value })
-                  }
-                />
+            <div className="flex justify-between w-full gap-10">
+              <div className="flex flex-col gap-5 w-1/2">
+                <div className="space-y-2">
+                  <label className="text-[14px] font-semibold text-[#0A0A0A]">
+                    Welcome Message
+                  </label>
+                  <input
+                    type="text"
+                    value={botData.welcomeMessage}
+                    onChange={(e) =>
+                      setBotData({ ...botData, welcomeMessage: e.target.value })
+                    }
+                    className="w-full bg-white border border-[#E4E4E7] rounded-md px-4 py-2 text-[15px] focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 outline-none mt-1"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[14px] font-semibold text-[#0A0A0A]">
+                    Input Placeholder
+                  </label>
+                  <input
+                    type="text"
+                    value={botData.inputPlaceholder}
+                    onChange={(e) =>
+                      setBotData({
+                        ...botData,
+                        inputPlaceholder: e.target.value,
+                      })
+                    }
+                    className="w-full bg-white border border-[#E4E4E7] rounded-md px-4 py-2 text-[15px] focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 outline-none mt-1"
+                  />
+                </div>
 
                 <div className="space-y-4">
-                  <label className="text-sm font-bold text-text-secondary ml-1">
-                    Brand color
+                  <label className="text-[14px] font-semibold text-[#0A0A0A]">
+                    Primary Color
                   </label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex gap-2 mt-3">
                     {colorOptions.map((c) => (
                       <button
                         key={c}
@@ -407,86 +476,85 @@ const NewBotPage: React.FC = () => {
                           setBotData({ ...botData, primaryColor: c })
                         }
                         className={cn(
-                          "w-10 h-10 rounded-full border-4 border-transparent transition-all hover:scale-110 shadow-sm",
+                          "w-8 h-8 rounded-full border-4 border-transparent transition-all",
                           botData.primaryColor === c
-                            ? "border-border ring-2 ring-brand"
+                            ? "border-white ring-2 ring-blue-600 shadow-lg scale-110"
                             : "",
                         )}
                         style={{ backgroundColor: c }}
                       />
                     ))}
-                    <div className="relative w-10 h-10 rounded-full border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-brand/40">
-                      <input
-                        type="color"
-                        value={botData.primaryColor}
-                        onChange={(e) =>
-                          setBotData({
-                            ...botData,
-                            primaryColor: e.target.value,
-                          })
-                        }
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                      <Plus className="w-4 h-4 text-text-tertiary" />
-                    </div>
                   </div>
-                </div>
-
-                <div className="pt-10 flex items-center justify-start">
-                  <button
-                    onClick={() => setStep(2)}
-                    className="text-text-secondary font-bold flex items-center gap-2 hover:text-foreground transition-all"
-                  >
-                    &larr; Back
-                  </button>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-foreground ml-1">
+              {/* Chat Preview */}
+              <div className="w-1/2">
+                <p className="text-[14px] font-semibold text-[#71717A] mb-2">
                   Preview
-                </h4>
-                <div className="bg-bg-tertiary rounded-3xl p-6 border border-border shadow-2xl h-[350px] flex flex-col overflow-hidden relative group">
+                </p>
+                <div className="bg-white border border-[#E4E4E7] rounded-[24px] shadow-lg h-[500px] flex flex-col overflow-hidden">
                   <div
                     style={{ backgroundColor: botData.primaryColor }}
-                    className="p-4 flex items-center justify-between text-white rounded-t-2xl"
+                    className="p-5 flex items-center gap-3 text-white shadow-lg transition-colors"
                   >
-                    <span className="font-bold text-sm flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
-                      {botData.name || "testing"}
-                    </span>
-                  </div>
-                  <div className="flex-1 bg-background p-4 space-y-4 overflow-y-auto">
-                    <div className="flex items-start gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-bg-secondary flex items-center justify-center text-text-tertiary text-[10px] font-bold">
-                        {botData.name?.[0].toUpperCase() || "T"}
-                      </div>
-                      <div className="bg-bg-secondary p-3 rounded-2xl rounded-tl-none text-xs text-foreground max-w-[85%] border border-border uppercase font-bold leading-relaxed px-4">
-                        {botData.welcomeMessage}
+                    <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                      <Bot className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[14px] font-semibold leading-tight">
+                        {botData.name || "d"}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-white/90">
+                          Online
+                        </span>
                       </div>
                     </div>
                   </div>
-                  <div className="p-4 bg-background border-t border-border flex gap-2">
-                    <div className="flex-1 h-9 bg-bg-secondary rounded-xl" />
+
+                  <div className="flex-1 p-6 space-y-6 overflow-y-auto bg-[#FAFAF9]">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-white border border-[#E4E4E7] p-2.5 rounded-[10px] rounded-tl-none shadow-sm text-[13px] font-semibold text-[#555050] max-w-[85%] leading-relaxed">
+                        {botData.welcomeMessage
+                          ? botData.welcomeMessage
+                          : "Hi! How can I help you today?"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-white border-t border-[#F4F4F5] flex gap-3 items-center">
+                    <div className="flex-1 h-11 bg-[#ffffff] rounded-lg px-4 flex items-center text-[#71717A] text-[13px] font-medium border">
+                      {botData.inputPlaceholder
+                        ? botData.inputPlaceholder
+                        : "Ask me anything..."}
+                    </div>
                     <div
                       style={{ backgroundColor: botData.primaryColor }}
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white"
+                      className="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-lg opacity-40 transition-colors"
                     >
-                      <ArrowRight className="w-4 h-4" />
+                      <Send className="w-4 h-4" />
                     </div>
                   </div>
                 </div>
-
-                <div className="pt-8 flex justify-end">
-                  <Button
-                    onClick={handleCreateBot}
-                    isLoading={isSubmitting}
-                    className="rounded-xl px-10 py-3 shadow-xl shadow-brand/10"
-                  >
-                    Create Bot
-                  </Button>
-                </div>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-12 border-t border-[#F4F4F5] mt-auto">
+              <button
+                onClick={() => setStep(2)}
+                className="text-[#71717A] font-semibold text-[15px] flex items-center gap-2 hover:text-[#0A0A0A]"
+              >
+                <ChevronLeft className="w-4 h-4" /> Back
+              </button>
+              <button
+                onClick={handleCreateBot}
+                disabled={isSubmitting}
+                className="bg-blue-500 hover:cursor-pointer disabled:opacity-50 text-white rounded-md px-6 py-2 font-semibold flex items-center gap-2 transition-all"
+              >
+                {isSubmitting ? "Creating..." : "Create Bot"}
+              </button>
             </div>
           </div>
         )}
